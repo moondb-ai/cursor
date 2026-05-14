@@ -12,16 +12,13 @@ description: Create a new MoonDB project and get API keys. Use when starting a n
 
 ## Prerequisites
 
-The user needs a MoonDB account. If they don't have one:
+The user needs a MoonDB API key (`mk_...`) for all management operations. Ask them for it.
 
-```
-POST https://api.moondb.ai/v1/accounts/signup
-Content-Type: application/json
+How to get the key:
+- **New user**: `POST https://api.moondb.ai/v1/accounts/signup { "email": "...", "password": "..." }` — the response includes `api_key`
+- **Existing user**: go to https://api.moondb.ai/dashboard → Account → click "Regenerate key"
 
-{ "email": "user@example.com", "password": "..." }
-```
-
-This returns an `api_key` (starts with `mk_`) used for all management operations.
+The `mk_` key is shown only once (at signup or regeneration). The user must save it.
 
 ## Steps
 
