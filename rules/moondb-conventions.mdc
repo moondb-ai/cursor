@@ -12,7 +12,7 @@ moondb-conventions:
 - IDs are UUID v4, auto-generated. Never define `id`, `created_at`, `updated_at`, `email` (on auth tables), or `password_hash` columns.
 - For auth tables set `auth_table: true` — this auto-creates `email` (string, required, unique) and `password_hash`, and enables /auth/* endpoints.
 - Access levels: "public", "authenticated", "owner", "admin". Default is "authenticated" for all operations.
-- Owner access requires `owner_field` pointing to a ref column (or "id" for auth tables).
+- When any access rule is "owner", set `owner_field` to a ref column pointing to the auth table (e.g. "user_id"). MoonDB compares it with the user id from the JWT — users only see/edit their own rows. Auto-filled on INSERT from Bearer token. For auth_table itself use `"owner_field": "id"`.
 - Refs are always to the `id` column. on_delete options: cascade, restrict (default), set_null.
 - Enum values must match [a-zA-Z0-9_-] only.
 - Destructive schema changes (drop column, narrow enum) require `confirm_destructive: true`.

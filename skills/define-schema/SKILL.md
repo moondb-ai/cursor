@@ -123,6 +123,26 @@ Instead of verbose objects, use space-separated strings:
 - `owner` — only the record owner (requires `owner_field`)
 - `admin` — admin key only
 
+### owner_field
+
+Required when any access rule is `"owner"`. Set it to a ref column pointing to the auth table:
+
+```json
+"posts": {
+  "columns": {
+    "user_id": "ref users required",
+    "title": "string required"
+  },
+  "access": { "read": "public", "update": "owner", "delete": "owner" },
+  "owner_field": "user_id"
+}
+```
+
+How it works:
+- **Read/Update/Delete**: MoonDB compares `user_id` with the user id from the JWT — users only access their own rows
+- **Insert**: if `user_id` is not in the request body, MoonDB auto-fills it from the Bearer token
+- For the auth table itself, use `"owner_field": "id"` (a user owns their own row)
+
 ### Destructive changes
 
 Dropping columns, changing types, or narrowing enums are destructive. MoonDB returns a preview first:
