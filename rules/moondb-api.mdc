@@ -12,10 +12,21 @@ moondb-api-patterns:
 - Sort: ?sort=field.desc or ?sort=field.asc
 - Pagination: ?limit=20&offset=0
 - Field selection: ?select=id,name,email
-- Include related records: ?include=user_id (expands ref columns)
-- List response shape: { data: [...], meta: { total, limit, offset, has_more } }
-- Single response shape: { data: { ...row } }
-- Error response shape: { error: { code, message, suggestion } }
-- Auth endpoints (when auth_table exists): POST /auth/signup, /auth/login, /auth/refresh, GET /auth/me, PATCH /auth/me, POST /auth/logout
-- File upload: POST /storage/upload (multipart/form-data with file, table, column, row_id fields)
-- AI endpoints: POST /ai/{endpoint_name} { "param": "value" }
+- Include related records: ?include=user_id (expands ref columns into full objects)
+- List response: { data: [...], meta: { total, limit, offset, has_more } }
+- Single response: { data: { ...row } }
+- Error response: { error: { code, message, suggestion } } — always read `suggestion` to self-correct
+- Auth endpoints (when auth_table exists):
+  - POST /auth/signup { email, password } → { data: { token, refresh_token, user } }
+  - POST /auth/login { email, password } → { data: { token, refresh_token, user } }
+  - POST /auth/refresh { refresh_token } → { data: { token, refresh_token } }
+  - GET /auth/me (Bearer token) → { data: { user } }
+  - PATCH /auth/me { display_name, ... } → { data: { user } }
+  - POST /auth/logout (Bearer token)
+  - POST /auth/change-password { current_password, new_password } (Bearer token)
+  - POST /auth/forgot-password { email, redirect_url } → sends reset email (always 200)
+  - POST /auth/reset-password { token, new_password } → resets password
+- Token expires in 1 hour. Use refresh_token (30 days) for renewal.
+- Headers: Authorization: Bearer {token} for auth, X-Public-Key: pk_... for public reads, X-Admin-Key: sk_... for admin ops
+- File upload: POST /storage/upload (multipart/form-data with file, table, column, row_id). After upload, store url in the file column via PATCH.
+- AI endpoints: POST /ai/{endpoint_name} { "param": "value" }. Text models: gemma (fast), gpt-oss (intelligent). Image models: flux-schnell (fast), flux-dev (photorealistic).
