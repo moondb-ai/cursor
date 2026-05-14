@@ -1,0 +1,14 @@
+{
+  "name": "moondb",
+  "displayName": "MoonDB",
+  "version": "0.1.0",
+  "description": "AI-friendly backend in 3 API calls. Declarative schema, auto-generated REST API, built-in auth, file storage, and AI endpoints.",
+  "author": {
+    "name": "MoonDB",
+    "email": "support@moondb.ai",
+    "url": "https://moondb.ai"
+  },
+  "license": "MIT",
+  "keywords": ["moondb", "database", "backend", "baas", "api", "mcp", "schema", "auth"],
+  "logo": "assets/logo.svg"
+}

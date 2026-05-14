@@ -1,0 +1,21 @@
+---
+description: MoonDB REST API patterns and query syntax
+alwaysApply: false
+globs: "**/*.{ts,tsx,js,jsx,py,rb,go,rs}"
+---
+
+moondb-api-patterns:
+
+- Base URL pattern: https://api.moondb.ai/p/{project_id}
+- CRUD endpoints: GET/POST /api/{table}, GET/PATCH/DELETE /api/{table}/{id}, POST /api/{table}/bulk
+- Filter syntax: ?field=op.value (operators: eq, neq, gt, gte, lt, lte, like, in, is_null, not_null)
+- Sort: ?sort=field.desc or ?sort=field.asc
+- Pagination: ?limit=20&offset=0
+- Field selection: ?select=id,name,email
+- Include related records: ?include=user_id (expands ref columns)
+- List response shape: { data: [...], meta: { total, limit, offset, has_more } }
+- Single response shape: { data: { ...row } }
+- Error response shape: { error: { code, message, suggestion } }
+- Auth endpoints (when auth_table exists): POST /auth/signup, /auth/login, /auth/refresh, GET /auth/me, PATCH /auth/me, POST /auth/logout
+- File upload: POST /storage/upload (multipart/form-data with file, table, column, row_id fields)
+- AI endpoints: POST /ai/{endpoint_name} { "param": "value" }
