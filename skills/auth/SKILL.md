@@ -102,6 +102,42 @@ POST /p/{project_id}/auth/logout
 Authorization: Bearer {token}
 ```
 
+### Change password
+
+```
+POST /p/{project_id}/auth/change-password
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{ "current_password": "oldpass", "new_password": "newpass123" }
+```
+
+Revokes all existing refresh tokens and returns `{ data: { ok: true } }`.
+
+### Forgot password
+
+```
+POST /p/{project_id}/auth/forgot-password
+Content-Type: application/json
+
+{ "email": "user@example.com", "redirect_url": "https://myapp.com/reset-password" }
+```
+
+Sends a password reset email with a link to `redirect_url?token=...`. Always returns 200 (never reveals whether the email exists).
+
+The `redirect_url` is your app's password reset page. Build a form there that collects the new password and calls the reset endpoint.
+
+### Reset password
+
+```
+POST /p/{project_id}/auth/reset-password
+Content-Type: application/json
+
+{ "token": "...", "new_password": "newpass123" }
+```
+
+Token expires in 1 hour. On success, all refresh tokens are revoked.
+
 ### Email verification
 
 When `verify_email: true` on the auth table:
