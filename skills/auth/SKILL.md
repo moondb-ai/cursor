@@ -21,7 +21,6 @@ Your schema must have a table with `auth_table: true`:
   "tables": {
     "users": {
       "columns": {
-        "email": "string required unique",
         "display_name": "string"
       },
       "auth_table": true,
@@ -31,7 +30,7 @@ Your schema must have a table with `auth_table: true`:
 }
 ```
 
-This auto-creates the `password_hash` column (hidden from API) and enables all `/auth/*` endpoints.
+This auto-creates `email` (string, required, unique) and `password_hash` (hidden from API), and enables all `/auth/*` endpoints.
 
 ## Auth endpoints
 

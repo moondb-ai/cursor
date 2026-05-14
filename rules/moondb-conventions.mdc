@@ -9,8 +9,8 @@ moondb-conventions:
 - Always send the full schema on updates. MoonDB auto-diffs and migrates.
 - Column types: string, text, int, float, bool, date, datetime, timestamp, json, enum, ref, uuid, file.
 - Short-form syntax: "string required unique", "int default 0", "ref users required", "bool default true".
-- IDs are UUID v4, auto-generated. Never define `id`, `created_at`, `updated_at`, or `password_hash` columns.
-- For auth tables set `auth_table: true` — this auto-creates password_hash and enables /auth/* endpoints.
+- IDs are UUID v4, auto-generated. Never define `id`, `created_at`, `updated_at`, `email` (on auth tables), or `password_hash` columns.
+- For auth tables set `auth_table: true` — this auto-creates `email` (string, required, unique) and `password_hash`, and enables /auth/* endpoints.
 - Access levels: "public", "authenticated", "owner", "admin". Default is "authenticated" for all operations.
 - Owner access requires `owner_field` pointing to a ref column (or "id" for auth tables).
 - Refs are always to the `id` column. on_delete options: cascade, restrict (default), set_null.

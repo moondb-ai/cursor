@@ -60,7 +60,6 @@ Instead of verbose objects, use space-separated strings:
   "tables": {
     "users": {
       "columns": {
-        "email": "string required unique",
         "display_name": "string",
         "avatar": "file",
         "role": { "type": "enum", "values": ["user", "admin"], "default": "user" }
@@ -114,6 +113,7 @@ Instead of verbose objects, use space-separated strings:
 - `id` — UUID v4, auto-generated primary key
 - `created_at` — ISO 8601 timestamp, auto-set
 - `updated_at` — ISO 8601 timestamp, auto-updated
+- `email` — auto-created on auth tables (string, required, unique)
 - `password_hash` — auto-created on auth tables (hidden from API responses)
 
 ### Access levels
