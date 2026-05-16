@@ -6,15 +6,24 @@ alwaysApply: true
 moondb-conventions:
 
 - MoonDB uses declarative JSON schemas. Describe WHAT you want, not HOW — never write SQL.
-- Always send the full schema on updates. MoonDB auto-diffs and migrates.
+- Send the FULL schema on every PUT /v1/schema. MoonDB diffs against the current version and auto-migrates.
 - Column types: string, text, int, float, bool, date, datetime, timestamp, json, enum, ref, uuid, file.
 - Short-form syntax: "string required unique", "int default 0", "ref users required", "bool default true".
-- IDs are UUID v4, auto-generated. Never define `id`, `created_at`, `updated_at`, `email` (on auth tables), or `password_hash` columns.
-- For auth tables set `auth_table: true` — this auto-creates `email` (string, required, unique) and `password_hash`, and enables /auth/* endpoints.
+- IDs are UUID v4, auto-generated. Never define `id`, `created_at`, `updated_at`, `deleted_at`, `email` (on auth tables), `password_hash`, `email_verified`, `verification_token`, `reset_token`, or any column starting with `verification_` / `reset_` on auth tables.
+- For auth tables set `auth_table: true` — this auto-creates `email` (string, required, unique) and `password_hash`, and enables /auth/* endpoints (signup, login, refresh, me, change/forgot/reset password).
 - Access levels: "public", "authenticated", "owner", "admin". Default is "authenticated" for all operations.
-- When any access rule is "owner", set `owner_field` to a ref column pointing to the auth table (e.g. "user_id"). MoonDB compares it with the user id from the JWT — users only see/edit their own rows. Auto-filled on INSERT from Bearer token. For auth_table itself use `"owner_field": "id"`.
-- Refs are always to the `id` column. on_delete options: cascade, restrict (default), set_null.
-- Enum values must match [a-zA-Z0-9_-] only.
-- Destructive schema changes (drop column, narrow enum) require `confirm_destructive: true`.
-- Auth keys: X-Admin-Key (sk_...) for management, Authorization: Bearer for user auth, X-Public-Key (pk_...) for public reads.
-- Every error response includes a `suggestion` field — always read it to self-correct.
+- When any access rule is "owner", set `owner_field` to a ref column pointing to the auth table (e.g. "user_id"). MoonDB compares it with the user id from the JWT — users only see/edit their own rows. The server FORCES this field to JWT.sub on INSERT and ignores client-supplied values; on UPDATE the owner_field is silently stripped from non-admin bodies. For auth_table itself use `"owner_field": "id"` (user owns their own row).
+- Refs are always to the `id` column. on_delete options: cascade, restrict (default), set_null. Ref columns are auto-indexed.
+- Enum values must match [a-zA-Z0-9_-]. Adding values is non-destructive; removing them requires `confirm_destructive: true`.
+- Destructive schema changes (drop column, change type, narrow enum, drop table) require `confirm_destructive: true`. Without it, PUT returns a preview of the migration plan instead of applying.
+- Schema options (top level): `timestamps: true` (default), `soft_delete: false` (default).
+- AI endpoints: declare under top-level `ai_endpoints` in the same schema PUT.
+    { "tables": {...}, "ai_endpoints": { "summarize": { "model": "gemma", "prompt": "Summarize: {{text}}", "access": "auth" } } }
+  Call via POST /ai/{name}. Each endpoint has its own access rule.
+- Three credentials, three different scopes — never mix:
+    mk_...  X-API-Key       Platform account (manage projects)
+    sk_...  X-Admin-Key     Project management (schema, config, admin endpoints, admin-access tables)
+    pk_...  X-Public-Key    Client-side data access (public-read tables only)
+- Never expose admin_key (sk_) in client code. Store in .env as MOONDB_ADMIN_KEY. Public key (pk_) is safe for the browser.
+- Every error response has a `suggestion` field — read it to self-correct. Don't guess the fix; the suggestion tells you the next call.
+- Re-fetch GET /p/{id}/v1/llm-context after every schema change — it's the canonical agent reference (always in sync with reality). Use GET /p/{id}/v1/openapi.json if you want the OpenAPI 3.0.3 spec instead.

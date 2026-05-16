@@ -47,26 +47,44 @@ GET /api/{table}?field=op.value&sort=field.desc&limit=20&offset=0
 ### Sorting and pagination
 
 ```
-?sort=created_at.desc
+?sort=created_at.desc                     # single
+?sort=col1.asc&sort=col2.desc             # multiple
+
+# Offset (small tables, supports total):
 ?limit=20&offset=40
+
+# Cursor (large tables, keyset; use meta.next_cursor from the previous page):
+?limit=20&sort=created_at.desc&cursor=eyJ...
 ```
+
+The `cursor` value is opaque — pass it back verbatim from `meta.next_cursor`. Never edit it.
 
 ### Field selection and includes
 
 ```
 ?select=id,title,created_at
-?include=user_id
+?include=user_id           # expands ref column into the related row (max 4)
 ```
 
-`include` expands ref columns into full related objects.
+`include` only works when the referenced table has `public` or `authenticated` read access.
 
 ### Response format
 
 ```json
 {
   "data": [{ "id": "...", "title": "...", "created_at": "..." }],
-  "meta": { "total": 42, "limit": 20, "offset": 0, "has_more": true }
+  "meta": {
+    "total": 42, "limit": 20, "offset": 0, "has_more": true,
+    "next_cursor": "eyJ..." | null
+  }
 }
+```
+
+### OpenAPI / agent reference
+
+```
+GET /p/{id}/v1/openapi.json    # OpenAPI 3.0.3 spec, auto-generated from the schema
+GET /p/{id}/v1/llm-context     # canonical agent prompt, always in sync; re-fetch after schema changes
 ```
 
 ## Get single record
@@ -91,11 +109,14 @@ Response: `{ "data": { "id": "...", ...row } }`
 ## Update record
 
 ```
-PATCH /api/{table}/{id}
+PATCH /api/{table}/{id}     # partial update — only the fields you send change
+PUT   /api/{table}/{id}     # full replace — non-default optional columns are cleared
 Content-Type: application/json
 
 { "title": "Updated title" }
 ```
+
+Note: `owner_field` (e.g. `user_id` on owner-scoped tables) is silently stripped from non-admin bodies on update — the server forces it to the JWT's user id on insert as well. Don't try to transfer ownership from the client.
 
 ## Delete record
 

@@ -125,6 +125,17 @@ Content-Type: application/json
 
 Sends a password reset email with a link to `redirect_url?token=...`. Always returns 200 (never reveals whether the email exists).
 
+**Important:** `redirect_url` must use an origin that's in the project's `allowed_redirect_origins` allow-list — otherwise the endpoint returns 400 `VALIDATION_REDIRECT_URL`. Configure once per project (admin key):
+
+```
+GET  /p/{project_id}/v1/redirect-origins
+PUT  /p/{project_id}/v1/redirect-origins
+X-Admin-Key: sk_...
+Content-Type: application/json
+
+{ "allowed_redirect_origins": ["https://myapp.com", "https://staging.myapp.com"] }
+```
+
 The `redirect_url` is your app's password reset page. Build a form there that collects the new password and calls the reset endpoint.
 
 ### Reset password
@@ -136,7 +147,7 @@ Content-Type: application/json
 { "token": "...", "new_password": "newpass123" }
 ```
 
-Token expires in 1 hour. On success, all refresh tokens are revoked.
+Token expires in 1 hour. On success, all refresh tokens are revoked AND every outstanding access token for this user is invalidated (the token carries a per-user password version that bumps on every change/reset).
 
 ### Email verification
 
@@ -155,9 +166,9 @@ User object includes `email_verified` (0 or 1).
 - `X-Public-Key: pk_...` for public-read endpoints from client code
 - `X-Admin-Key: sk_...` for schema and admin operations (server-side only, never expose to client)
 
-## External auth (Clerk, Auth0)
+## External auth (Clerk, Auth0, Supabase, Firebase, Cognito, Kinde, WorkOS, Stytch)
 
-Instead of built-in auth, validate JWTs from an external provider:
+Instead of built-in auth, validate RS256-signed JWTs from an external provider:
 
 ```
 PUT /p/{project_id}/v1/auth-config
@@ -167,15 +178,26 @@ Content-Type: application/json
 {
   "provider": "external",
   "jwks_url": "https://your-provider.com/.well-known/jwks.json",
-  "user_id_claim": "sub"
+  "user_id_claim": "sub",
+  "audience": "your-audience"
 }
 ```
+
+`jwks_url` must be `https://` and use a known IdP host suffix (the API rejects unknown hosts to prevent SSRF). `audience` defaults to the project_id if you don't set it — this blocks cross-project JWT replay when two MoonDB projects share the same IdP tenant. To remove external auth: `DELETE /p/{id}/v1/auth-config`.
 
 ## Key rotation
 
 ```
-POST /p/{project_id}/v1/rotate-keys
+POST /p/{project_id}/v1/rotate-keys          # rotate sk_ / pk_
+X-Admin-Key: sk_...
+{ "admin": true }   # or { "public": true } or { "both": true }
+```
+
+Returns new admin_key and/or public_key. Previous keys are immediately invalidated.
+
+```
+POST /p/{project_id}/v1/rotate-jwt-secret    # invalidate ALL outstanding end-user JWTs
 X-Admin-Key: sk_...
 ```
 
-Returns new admin_key and public_key. Previous keys are immediately invalidated.
+Use after a suspected compromise or after a critical schema/access-rule change. The secret itself is never returned in the response — only `{ rotated: true }`. Existing refresh_tokens are unaffected; users continue with refresh or re-login.

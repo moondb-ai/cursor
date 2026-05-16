@@ -7,26 +7,60 @@ globs: "**/*.{ts,tsx,js,jsx,py,rb,go,rs}"
 moondb-api-patterns:
 
 - Base URL pattern: https://api.moondb.ai/p/{project_id}
-- CRUD endpoints: GET/POST /api/{table}, GET/PATCH/DELETE /api/{table}/{id}, POST /api/{table}/bulk
-- Filter syntax: ?field=op.value (operators: eq, neq, gt, gte, lt, lte, like, in, is_null, not_null)
-- Sort: ?sort=field.desc or ?sort=field.asc
-- Pagination: ?limit=20&offset=0
+- CRUD endpoints:
+    GET/POST   /api/{table}
+    GET/PATCH/PUT/DELETE /api/{table}/{id}
+    POST       /api/{table}/bulk          (atomic, ≤100 rows)
+- Filter syntax: ?field=op.value
+    Operators: eq, neq, gt, gte, lt, lte, like, in, is_null, not_null
+    Examples:  ?status=eq.active   ?priority=in.high,medium   ?name=like.foo%
+               ?deleted_at=is_null
+- Sort: ?sort=field.desc or ?sort=field.asc (multiple: ?sort=a.asc&sort=b.desc)
+- Pagination:
+    Offset: ?limit=20&offset=40
+    Cursor: ?limit=20&cursor=eyJ...  (use meta.next_cursor from the previous response; opaque — never edit)
 - Field selection: ?select=id,name,email
-- Include related records: ?include=user_id (expands ref columns into full objects)
-- List response: { data: [...], meta: { total, limit, offset, has_more } }
-- Single response: { data: { ...row } }
-- Error response: { error: { code, message, suggestion } } — always read `suggestion` to self-correct
+- Include related rows: ?include=user_id  (max 4; ref target must have public/auth read)
+- Auto-generated OpenAPI spec: GET /p/{id}/v1/openapi.json   (OpenAPI 3.0.3)
+- Canonical agent reference: GET /p/{id}/v1/llm-context     (always in sync — re-fetch after schema changes)
+- Response envelopes:
+    List:   { data: [...], meta: { total, limit, offset, has_more, next_cursor } }
+    Single: { data: { ...row } }
+    Error:  { error: { code, message, suggestion } }   — always read `suggestion` to self-correct
 - Auth endpoints (when auth_table exists):
-  - POST /auth/signup { email, password } → { data: { token, refresh_token, user } }
-  - POST /auth/login { email, password } → { data: { token, refresh_token, user } }
-  - POST /auth/refresh { refresh_token } → { data: { token, refresh_token } }
-  - GET /auth/me (Bearer token) → { data: { user } }
-  - PATCH /auth/me { display_name, ... } → { data: { user } }
-  - POST /auth/logout (Bearer token)
-  - POST /auth/change-password { current_password, new_password } (Bearer token)
-  - POST /auth/forgot-password { email, redirect_url } → sends reset email (always 200)
-  - POST /auth/reset-password { token, new_password } → resets password
-- Token expires in 1 hour. Use refresh_token (30 days) for renewal.
-- Headers: Authorization: Bearer {token} for auth, X-Public-Key: pk_... for public reads, X-Admin-Key: sk_... for admin ops
-- File upload: POST /storage/upload (multipart/form-data with file, table, column, row_id). After upload, store url in the file column via PATCH.
-- AI endpoints: POST /ai/{endpoint_name} { "param": "value" }. Text models: gemma (fast), gpt-oss (intelligent). Image models: flux-schnell (fast), flux-dev (photorealistic).
+    POST /auth/signup           { email, password }                  → { data: { token, refresh_token, user } }
+    POST /auth/login            { email, password }                  → { data: { token, refresh_token, user } }
+    POST /auth/refresh          { refresh_token }                    → { data: { token, refresh_token } }  (rotates)
+    GET  /auth/me               (Bearer)                              → { data: { user } }
+    PATCH /auth/me              { display_name, ... }                 → { data: { user } }
+    POST /auth/logout           (Bearer; revokes refresh)
+    POST /auth/change-password  { current_password, new_password }   (Bearer; revokes existing access tokens)
+    POST /auth/forgot-password  { email, redirect_url }              → 200 always (no enum leak; redirect_url must be in allowed_redirect_origins)
+    POST /auth/reset-password   { token, new_password }
+- forgot-password gate: configure the allowlist once per project (admin key):
+    GET  /v1/redirect-origins
+    PUT  /v1/redirect-origins  { "allowed_redirect_origins": ["https://myapp.com"] }
+- Token expires in 1 hour. Use refresh_token (30 days, rotates on every use).
+- Headers:
+    Authorization: Bearer {user_jwt}   — end-user requests
+    X-Public-Key: pk_...               — public reads from the browser
+    X-Admin-Key: sk_...                — schema/admin ops (server-side only, never in client code)
+- File upload:
+    POST /storage/upload (multipart/form-data: file, table, column, row_id) → { data: { id, url, size } }
+    GET  /storage/{file_id}  → 302 to presigned R2 URL (forced attachment + nosniff for non-image MIMEs — XSS defence)
+    DELETE /storage/{file_id}
+    When row_id is set, the caller must own that row. After upload, store url/id in the row's file column via PATCH.
+- AI endpoints (declared in schema under "ai_endpoints"):
+    POST /ai/{endpoint_name}  { "param": "value" }
+    Text  → { data: { result, model, credits_used } }
+    Image → { data: { image_base64, content_type, model, credits_used } }  — base64, NOT a URL
+    Text models: gemma (fast), gpt-oss (intelligent)
+    Image models: flux-schnell (fast), flux-dev (photorealistic)
+    Access per endpoint: "public" | "auth" (default) | "admin"
+    Balance: GET /v1/ai/balance → { free_credits, free_credits_limit, purchased_credits, total, resets_at }
+- External auth (Clerk/Auth0/Supabase/Firebase/Cognito/Kinde/WorkOS/Stytch):
+    PUT /v1/auth-config  { provider: "external", jwks_url, user_id_claim, audience }
+    jwks_url is restricted to known-IdP host suffixes (https only). audience defaults to project_id.
+- Key/secret rotation:
+    POST /v1/rotate-keys         → { admin_key?, public_key? }   (admin key)
+    POST /v1/rotate-jwt-secret   → { rotated: true }            (admin key; invalidates all outstanding end-user JWTs)
