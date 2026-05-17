@@ -76,3 +76,19 @@ X-Public-Key: pk_...
 ```
 
 This returns a plain-text reference of all tables, columns, endpoints, and auth flows.
+
+When running via MCP, you can call `get_reference` (with or without `project_id`)
+to fetch the same content — useful for looking up a specific feature beyond
+what tool descriptions cover.
+
+## Related management tools
+
+When the user already has projects on MoonDB but you've lost track of which
+one (or which API URL to use), prefer these over re-creating:
+
+- **`list_projects`** — enumerate every project owned by the account, with
+  `api_url` and `public_key` per project. Call before `create_project` to
+  avoid duplicates.
+- **`rotate_keys`** — recovery path when the user has lost the `admin_key`.
+  Returns a fresh `sk_...` (shown once). Old key is invalidated immediately.
+  Use either `{ admin: true }`, `{ public: true }`, or `{ both: true }`.

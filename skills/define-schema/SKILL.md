@@ -155,16 +155,58 @@ Add this to the request body to apply destructive migrations.
 
 ### Validate without applying
 
+Returns the same migration plan `set_schema` would, without touching the
+database. Use to iterate on a complex schema or preview a destructive change.
+
+REST:
 ```
 POST https://api.moondb.ai/p/{project_id}/v1/schema/validate
 X-Admin-Key: sk_...
 ```
 
+MCP:
+```
+validate_schema { project_id, schema }
+```
+
 ### Seed data after schema
 
+Bulk insert with topological ordering and cross-reference resolution. Use
+`"@<table>.<index>"` to point at a row inserted earlier in the same call.
+
+REST:
 ```
 POST https://api.moondb.ai/p/{project_id}/v1/schema/seed
 X-Admin-Key: sk_...
 
-{ "posts": [{ "user_id": "...", "title": "First post", "body": "Hello world" }] }
+{
+  "users": [
+    { "email": "a@x.io", "password": "secretpass1" },
+    { "email": "b@x.io", "password": "secretpass2" }
+  ],
+  "posts": [
+    { "title": "Hello",   "user_id": "@users.0" },
+    { "title": "Another", "user_id": "@users.1" }
+  ]
+}
 ```
+
+MCP:
+```
+seed { project_id, data: { table_name: [rows], ... } }
+```
+
+For `auth_table` rows send a plain `"password"` field — MoonDB hashes it
+server-side into `password_hash`.
+
+## Pre-flight: inspect before mutating
+
+`set_schema` REPLACES the schema (auto-migrating non-destructive parts). Call
+`get_schema` first when you're not sure what's already there — it returns the
+current schema plus a compact `tables_info` listing per-table column names,
+access rules, and `auth_table` / `owner_field` flags. Cheaper than diffing
+in your head.
+
+If you need a feature beyond what these skill notes cover, call
+`get_reference` — it returns the full canonical MoonDB agent reference,
+project-scoped when you pass `project_id` (includes the live schema).

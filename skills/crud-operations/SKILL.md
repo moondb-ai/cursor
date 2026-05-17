@@ -10,6 +10,22 @@ description: Query, create, update, and delete records via MoonDB REST API. Use 
 - Implementing data fetching, creation, updates, or deletion in application code
 - Building API integration with a MoonDB backend
 
+## REST vs MCP tools
+
+Two surfaces, two different consumers:
+
+- **REST** (the patterns below) — for the **user's app code**. Generate
+  `fetch()` calls hitting `/p/{id}/api/{table}` from the React/Next/Lovable
+  output. This is what the deployed application talks to.
+- **MCP tools** (`query`, `get_row`, `insert`, `update_row`, `delete_row`) —
+  for **the agent's own ad-hoc data work** during setup: seeding fixtures,
+  verifying an insert worked, deleting a bad test row, sanity-checking a
+  query. Don't put these in app code — the user's app won't have an
+  `mk_...` key.
+
+The REST docs below cover both how to call the API from app code AND how
+the MCP tools map onto it.
+
 ## Base URL
 
 ```
